@@ -15,7 +15,4 @@ Vercel Serverless Functions - для деплоя
 Структура проекта:
 api/index.js - основной файл с логикой бота
 api/setWebhook.js - вспомогательный файл для настройки вебхука
-.env.example - пример файла с переменными окружения
-package.json - зависимости проекта
-vercel.json - конфигурация для Vercel
 repo https://github.com/dichenko/qa-bots.git

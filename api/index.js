@@ -18,8 +18,40 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   process.exit(1);
 }
 
+// Дополнительная проверка переменных окружения для отладки
+console.log('SUPABASE_URL задан:', !!SUPABASE_URL);
+console.log('SUPABASE_KEY задан:', !!SUPABASE_KEY);
+console.log('SUPABASE_URL длина:', SUPABASE_URL ? SUPABASE_URL.length : 0);
+console.log('SUPABASE_KEY длина:', SUPABASE_KEY ? SUPABASE_KEY.length : 0);
+
 // Инициализация Supabase клиента
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Проверка существования таблицы
+async function checkTableExists() {
+  try {
+    console.log('Проверяем наличие таблицы qa-bot-messages...');
+    const { data, error } = await supabase
+      .from('qa-bot-messages')
+      .select('id')
+      .limit(1);
+    
+    if (error) {
+      console.error('Ошибка при проверке таблицы qa-bot-messages:', error);
+      // Создаем таблицу, если есть необходимые права
+      if (error.code === '42P01') { // Код ошибки PostgreSQL для отсутствующей таблицы
+        console.log('Таблица не найдена. Попытка создать таблицу...');
+      }
+    } else {
+      console.log('Таблица qa-bot-messages существует.');
+    }
+  } catch (err) {
+    console.error('Ошибка при проверке таблицы:', err);
+  }
+}
+
+// Вызываем проверку таблицы при запуске
+checkTableExists();
 
 // Инициализация бота
 const bot = new Telegraf(BOT_TOKEN);
@@ -27,25 +59,58 @@ const bot = new Telegraf(BOT_TOKEN);
 // Функция для сохранения сообщения в БД
 async function saveMessageToDatabase(userId, userName, userSurname, messageText, timestamp) {
   try {
+    console.log('Попытка сохранить сообщение в БД:', {
+      tgid: userId,
+      user_name: userName,
+      text: messageText.substring(0, 20) + '...' // Показываем только начало сообщения для логов
+    });
+    
+    // Проверка данных перед отправкой
+    if (!userId) {
+      console.error('userId не определен');
+      return;
+    }
+    
+    // Преобразуем userId в строку, если он не строка
+    const tgidValue = userId.toString();
+    
     const { data, error } = await supabase
       .from('qa-bot-messages')
       .insert([
         { 
-          tgid: userId,
+          tgid: tgidValue,
           user_name: userName || null,
           user_surname: userSurname || null,
-          text: messageText,
+          text: messageText || '',
           timecode: timestamp
         }
       ]);
     
     if (error) {
       console.error('Ошибка при сохранении в БД:', error);
+      // Отправляем ошибку владельцу бота для отладки
+      try {
+        await bot.telegram.sendMessage(
+          OWNER_ID,
+          `⚠️ Ошибка при сохранении в БД:\nКод: ${error.code}\nСообщение: ${error.message}\nДетали: ${error.details || 'нет'}`
+        );
+      } catch (e) {
+        console.error('Не удалось отправить сообщение об ошибке владельцу:', e);
+      }
     } else {
-      console.log('Сообщение сохранено:', data);
+      console.log('Сообщение успешно сохранено в БД');
     }
   } catch (err) {
-    console.error('Ошибка при работе с БД:', err);
+    console.error('Критическая ошибка при работе с БД:', err);
+    // Отправляем критическую ошибку владельцу бота
+    try {
+      await bot.telegram.sendMessage(
+        OWNER_ID,
+        `🔴 Критическая ошибка при работе с БД: ${err.message}`
+      );
+    } catch (e) {
+      console.error('Не удалось отправить сообщение о критической ошибке владельцу:', e);
+    }
   }
 }
 
