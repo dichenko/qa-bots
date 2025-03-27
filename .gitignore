@@ -1,0 +1,28 @@
+# Зависимости
+node_modules/
+.pnp
+.pnp.js
+
+# Локальные файлы
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Логи
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Директории Vercel
+.vercel/
+
+# Прочее
+.DS_Store
+.idea/
+.vscode/
+.next/
+dist/
+/out/
+/build/ 

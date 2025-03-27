@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Код деплоится на Vercel
+BD Supabase
+все переменные env находятся в Vercel
+я разрабатываю на Windos

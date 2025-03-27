@@ -1,0 +1,20 @@
+{
+  "name": "telegram-feedback-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for user feedback",
+  "main": "api/index.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel deploy --prod"
+  },
+  "dependencies": {
+    "telegraf": "^4.15.3",
+    "@supabase/supabase-js": "^2.39.3"
+  },
+  "devDependencies": {
+    "vercel": "^33.3.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 
