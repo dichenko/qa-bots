@@ -23,7 +23,7 @@ const bot = new Telegraf(BOT_TOKEN);
 async function saveMessageToDatabase(userId, userName, userSurname, messageText, timestamp) {
   try {
     const { data, error } = await supabase
-      .from('messages')
+      .from('qa-bot-messages')
       .insert([
         { 
           tgid: userId,
