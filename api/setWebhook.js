@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
     if (SUPABASE_URL && SUPABASE_KEY) {
       try {
         const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-        const { data, error } = await supabase.from('qa-bot-messages').select('id').limit(1);
+        const { data, error } = await supabase.from('qa_bot_messages').select('id').limit(1);
         
         if (error) {
           supabaseStatus = { connected: false, error: error.message, code: error.code };

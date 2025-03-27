@@ -34,7 +34,7 @@ module.exports = async (req, res) => {
     
     // Проверяем соединение с Supabase
     const { data: connectionTest, error: connectionError } = await supabase
-      .from('qa-bot-messages')
+      .from('qa_bot_messages')
       .select('id')
       .limit(1);
 

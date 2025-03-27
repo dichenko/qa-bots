@@ -21,7 +21,7 @@
 ## Настройка Supabase
 
 1. Создайте новый проект в Supabase
-2. Создайте таблицу `qa-bot-messages` со следующей структурой:
+2. Создайте таблицу `qa_bot_messages` со следующей структурой:
    - `id` (serial, primary key)
    - `tgid` (text, not null)
    - `user_name` (text)

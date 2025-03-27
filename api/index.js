@@ -30,20 +30,20 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 // Проверка существования таблицы
 async function checkTableExists() {
   try {
-    console.log('Проверяем наличие таблицы qa-bot-messages...');
+    console.log('Проверяем наличие таблицы qa_bot_messages...');
     const { data, error } = await supabase
-      .from('qa-bot-messages')
+      .from('qa_bot_messages')
       .select('id')
       .limit(1);
     
     if (error) {
-      console.error('Ошибка при проверке таблицы qa-bot-messages:', error);
+      console.error('Ошибка при проверке таблицы qa_bot_messages:', error);
       // Создаем таблицу, если есть необходимые права
       if (error.code === '42P01') { // Код ошибки PostgreSQL для отсутствующей таблицы
         console.log('Таблица не найдена. Попытка создать таблицу...');
       }
     } else {
-      console.log('Таблица qa-bot-messages существует.');
+      console.log('Таблица qa_bot_messages существует.');
     }
   } catch (err) {
     console.error('Ошибка при проверке таблицы:', err);
@@ -75,7 +75,7 @@ async function saveMessageToDatabase(userId, userName, userSurname, messageText,
     const tgidValue = userId.toString();
     
     const { data, error } = await supabase
-      .from('qa-bot-messages')
+      .from('qa_bot_messages')
       .insert([
         { 
           tgid: tgidValue,

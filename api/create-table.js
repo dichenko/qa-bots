@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
 
     // Проверяем, существует ли таблица
     const { data: existingTable, error: checkError } = await supabase
-      .from('qa-bot-messages')
+      .from('qa_bot_messages')
       .select('id')
       .limit(1);
 
@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
     if (!checkError) {
       return res.status(200).json({
         success: true,
-        message: 'Таблица qa-bot-messages уже существует'
+        message: 'Таблица qa_bot_messages уже существует'
       });
     }
 
@@ -69,7 +69,7 @@ module.exports = async (req, res) => {
         console.error('Ошибка при создании функции:', createFuncError);
         return res.status(500).json({
           success: false,
-          error: 'Не удалось создать таблицу qa-bot-messages',
+          error: 'Не удалось создать таблицу qa_bot_messages',
           details: createFuncError
         });
       }
@@ -89,7 +89,7 @@ module.exports = async (req, res) => {
 
     // Проверяем, создалась ли таблица
     const { data: checkAgain, error: checkAgainError } = await supabase
-      .from('qa-bot-messages')
+      .from('qa_bot_messages')
       .select('id')
       .limit(1);
 
@@ -103,7 +103,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: 'Таблица qa-bot-messages успешно создана'
+      message: 'Таблица qa_bot_messages успешно создана'
     });
 
   } catch (error) {
