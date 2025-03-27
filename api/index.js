@@ -5,11 +5,16 @@ const { createClient } = require('@supabase/supabase-js');
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const OWNER_ID = process.env.OWNER_TELEGRAM_ID;
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Проверка обязательных переменных окружения
-if (!BOT_TOKEN || !OWNER_ID || !SUPABASE_URL || !SUPABASE_KEY) {
-  console.error('Отсутствуют обязательные переменные окружения');
+if (!BOT_TOKEN || !OWNER_ID) {
+  console.error('Отсутствуют обязательные переменные окружения для бота');
+  process.exit(1);
+}
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('Отсутствуют обязательные переменные окружения для Supabase');
   process.exit(1);
 }
 

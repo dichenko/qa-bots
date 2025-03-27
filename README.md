@@ -21,13 +21,14 @@
 ## Настройка Supabase
 
 1. Создайте новый проект в Supabase
-2. Создайте таблицу `messages` со следующей структурой:
+2. Создайте таблицу `qa-bot-messages` со следующей структурой:
    - `id` (serial, primary key)
    - `tgid` (text, not null)
    - `user_name` (text)
    - `user_surname` (text)
    - `text` (text, not null)
    - `timecode` (timestamp, not null)
+3. Интегрируйте Supabase с Vercel через маркетплейс Vercel (по желанию)
 
 ## Установка и запуск
 
@@ -40,13 +41,24 @@
 
 ### Деплой на Vercel
 
+#### Вариант 1: С интеграцией Supabase
+
+1. Подключите интеграцию Supabase в маркетплейсе Vercel
+2. Создайте новый проект на Vercel и импортируйте репозиторий
+3. Добавьте только недостающие переменные окружения в настройках проекта:
+   - `TELEGRAM_BOT_TOKEN` - токен вашего Telegram бота
+   - `OWNER_TELEGRAM_ID` - ваш Telegram ID
+4. Выполните деплой
+
+#### Вариант 2: Без интеграции Supabase
+
 1. Создайте новый проект на Vercel
 2. Добавьте следующие переменные окружения в настройках проекта:
    - `TELEGRAM_BOT_TOKEN` - токен вашего Telegram бота
    - `OWNER_TELEGRAM_ID` - ваш Telegram ID
    - `SUPABASE_URL` - URL вашего проекта Supabase
-   - `SUPABASE_SERVICE_KEY` - сервисный ключ Supabase
-3. Выполните деплой: `npm run deploy`
+   - `SUPABASE_SERVICE_ROLE_KEY` - сервисный ключ Supabase
+3. Выполните деплой
 
 ## Настройка вебхуков для Telegram
 
@@ -58,4 +70,9 @@ https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=<VERCEL_URL>/api
 
 Где:
 - `<TELEGRAM_BOT_TOKEN>` - токен вашего бота
-- `<VERCEL_URL>` - URL вашего проекта на Vercel 
+- `<VERCEL_URL>` - URL вашего проекта на Vercel
+
+Также можно использовать встроенную функцию для установки вебхука, посетив URL:
+```
+<VERCEL_URL>/api/setWebhook
+``` 
