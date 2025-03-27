@@ -114,6 +114,39 @@ async function saveMessageToDatabase(userId, userName, userSurname, messageText,
   }
 }
 
+// Функция для проверки наличия сообщений за последние 24 часа
+async function hasRecentMessages(userId) {
+  try {
+    // Получаем время 24 часа назад
+    const oneDayAgo = new Date();
+    oneDayAgo.setHours(oneDayAgo.getHours() - 24);
+    const oneDayAgoStr = oneDayAgo.toISOString();
+    
+    console.log(`Проверяем сообщения пользователя ${userId} за последние 24 часа (после ${oneDayAgoStr})...`);
+    
+    const { data, error } = await supabase
+      .from('qa_bot_messages')
+      .select('id, timecode')
+      .eq('tgid', userId.toString())
+      .gte('timecode', oneDayAgoStr)
+      .order('timecode', { ascending: false })
+      .limit(1);
+    
+    if (error) {
+      console.error('Ошибка при проверке недавних сообщений:', error);
+      return false; // В случае ошибки считаем, что сообщений нет
+    }
+    
+    const hasRecent = data && data.length > 0;
+    console.log(`Найдены ли сообщения за последние 24 часа: ${hasRecent}`, hasRecent ? `(последнее в ${data[0].timecode})` : '');
+    
+    return hasRecent;
+  } catch (err) {
+    console.error('Критическая ошибка при проверке недавних сообщений:', err);
+    return false; // В случае ошибки считаем, что сообщений нет
+  }
+}
+
 // Обработчик команды /start
 bot.start(async (ctx) => {
   const userId = ctx.from.id;
@@ -166,16 +199,21 @@ bot.on('message', async (ctx) => {
     } 
     // Если сообщение от обычного пользователя (не владельца)
     else if (ctx.from.id.toString() !== OWNER_ID) {
-      // Ответ пользователю
-      await ctx.reply('Получили ваше сообщение, скоро ответим');
+      // Проверяем, было ли сообщение от пользователя за последние 24 часа
+      const hadRecentMessages = await hasRecentMessages(userId);
       
-      // Отправка сообщения владельцу
+      // Отправляем стандартный ответ только если не было сообщений за последние 24 часа
+      if (!hadRecentMessages) {
+        await ctx.reply('Получили ваше сообщение, скоро ответим');
+      }
+      
+      // Отправка сообщения владельцу в любом случае
       await bot.telegram.sendMessage(
         OWNER_ID,
         `👤 Пользователь с ID: ${userId}\nИмя: ${userName || 'Не указано'}\nФамилия: ${userSurname || 'Не указана'}\nСообщение: ${messageText}`
       );
       
-      // Сохранение в БД
+      // Сохранение в БД в любом случае
       await saveMessageToDatabase(userId, userName, userSurname, messageText, timestamp);
     }
   }
