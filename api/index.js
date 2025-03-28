@@ -124,13 +124,10 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
       // Ответ пользователю
       await ctx.reply('Здравствуйте! Напишите ваше сообщение, и мы скоро на него ответим.');
       
-      // Отправка уведомления владельцу с улучшенным форматированием
+      // Отправка уведомления владельцу
       await bot.telegram.sendMessage(
         OWNER_ID,
-        `🤖 *Бот:* _${botId}_\n` +
-        `👋 [${userId}](tg://user?id=${userId}) _запустил бота_\n` +
-        `👤 ${userName || 'none'} ${userSurname || 'none'}`,
-        { parse_mode: 'Markdown' }
+        `👤 Пользователь с ID: ${userId}\nИмя: ${userName || 'Не указано'}\nФамилия: ${userSurname || 'Не указана'}\nДействие: Запустил бота\nБот: ${botId}`
       );
 
       // Сохранение в БД
@@ -150,17 +147,8 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
         if (ctx.message.reply_to_message && ctx.from.id.toString() === OWNER_ID) {
           // Получение ID пользователя и ID бота из оригинального сообщения
           const originalMessageText = ctx.message.reply_to_message.text;
-          
-          // Новый формат регулярных выражений для поддержки нового формата сообщений
-          // Для извлечения ID из [ID](tg://user?id=ID)
-          const userIdMatch = originalMessageText.match(/\[(\d+)\]\(tg:\/\/user\?id=\d+\)/) || 
-                             originalMessageText.match(/👤 \[(\d+)\]/) ||
-                             originalMessageText.match(/ID: (\d+)/); // Поддержка старого формата
-          
-          // Извлекаем ID бота из нового формата
-          const botIdMatch = originalMessageText.match(/\*Бот:\* _([A-Z0-9_]+)_/) || 
-                            originalMessageText.match(/🤖 \*Бот:\* _([A-Z0-9_]+)_/) ||
-                            originalMessageText.match(/Бот: ([A-Z0-9_]+)/); // Поддержка старого формата
+          const userIdMatch = originalMessageText.match(/ID: (\d+)/);
+          const botIdMatch = originalMessageText.match(/Бот: ([A-Z0-9_]+)/);
           
           if (userIdMatch && userIdMatch[1] && botIdMatch && botIdMatch[1]) {
             const recipientId = userIdMatch[1];
@@ -168,30 +156,19 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
             const targetBot = bots[targetBotId];
             
             if (targetBot) {
-              // Отправка ответа пользователю с улучшенным форматированием
-              await targetBot.telegram.sendMessage(
-                recipientId, 
-                `✅ *Ответ от поддержки:*\n\n${messageText}`, 
-                { parse_mode: 'Markdown' }
-              );
+              // Отправка ответа пользователю
+              await targetBot.telegram.sendMessage(recipientId, `Ответ: ${messageText}`);
               
               // Сохранение ответа в БД
               await saveMessageToDatabase(OWNER_ID, 'Владелец', '', `Ответ для ${recipientId}: ${messageText}`, timestamp, targetBotId);
               
               // Подтверждение владельцу
-              await ctx.reply(
-                `✅ Ответ отправлен пользователю [${recipientId}](tg://user?id=${recipientId}) через бота _${targetBotId}_`,
-                { parse_mode: 'Markdown' }
-              );
+              await ctx.reply(`Ответ отправлен пользователю ${recipientId} через бота ${targetBotId}`);
             } else {
-              await ctx.reply(`❌ Не найден бот с ID: *${targetBotId}*`, { parse_mode: 'Markdown' });
+              await ctx.reply(`Не найден бот с ID: ${targetBotId}`);
             }
           } else {
-            await ctx.reply(
-              '❌ *Не удалось определить получателя*\n\n' +
-              'Пожалуйста, используйте Reply на сообщение пользователя для ответа.',
-              { parse_mode: 'Markdown' }
-            );
+            await ctx.reply('Не удалось определить ID пользователя или бота для ответа');
           }
         } 
         // Если сообщение от обычного пользователя (не владельца)
@@ -201,16 +178,13 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
           
           // Отправляем стандартный ответ только если не было сообщений за последние 24 часа
           if (!hadRecentMessages) {
-            await ctx.reply('✅ Получили ваше сообщение, скоро ответим');
+            await ctx.reply('Получили ваше сообщение, скоро ответим');
           }
           
-          // Отправка сообщения владельцу в любом случае с улучшенным форматированием
+          // Отправка сообщения владельцу в любом случае
           await bot.telegram.sendMessage(
             OWNER_ID,
-            `🤖 *Бот:* _${botId}_\n\n` +
-            `*${messageText}*\n\n` + // Сообщение выделено жирным и вынесено на передний план
-            `👤 [${userId}](tg://user?id=${userId}) • ${userName || 'none'} ${userSurname || 'none'}`,
-            { parse_mode: 'Markdown' }
+            `👤 Пользователь с ID: ${userId}\nИмя: ${userName || 'Не указано'}\nФамилия: ${userSurname || 'Не указана'}\nСообщение: ${messageText}\nБот: ${botId}`
           );
           
           // Сохранение в БД в любом случае
@@ -272,11 +246,7 @@ async function saveMessageToDatabase(userId, userName, userSurname, messageText,
         const firstBot = Object.values(bots)[0];
         await firstBot.telegram.sendMessage(
           OWNER_ID,
-          `⚠️ *Ошибка при сохранении в БД*\n` +
-          `Код: \`${error.code}\`\n` +
-          `Сообщение: _${error.message}_\n` +
-          `Детали: _${error.details || 'нет'}_`,
-          { parse_mode: 'Markdown' }
+          `⚠️ Ошибка при сохранении в БД:\nКод: ${error.code}\nСообщение: ${error.message}\nДетали: ${error.details || 'нет'}`
         );
       } catch (e) {
         console.error('Не удалось отправить сообщение об ошибке владельцу:', e);
@@ -291,9 +261,7 @@ async function saveMessageToDatabase(userId, userName, userSurname, messageText,
       const firstBot = Object.values(bots)[0];
       await firstBot.telegram.sendMessage(
         OWNER_ID,
-        `🔴 *Критическая ошибка при работе с БД*\n` +
-        `_${err.message}_`,
-        { parse_mode: 'Markdown' }
+        `🔴 Критическая ошибка при работе с БД: ${err.message}`
       );
     } catch (e) {
       console.error('Не удалось отправить сообщение о критической ошибке владельцу:', e);
@@ -377,7 +345,7 @@ module.exports = async (req, res) => {
         // Если указан конкретный ID бота и он существует
         console.log(`Обрабатываем запрос через бота ${targetBotId}`);
         await bots[targetBotId].handleUpdate(req.body);
-        res.status(200).end();
+      res.status(200).end();
       } else {
         // Если бот не найден
         console.error(`Бот с ID "${targetBotId}" не найден (путь: ${path}), доступные боты: ${availableBotIds.join(', ')}`);

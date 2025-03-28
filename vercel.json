@@ -6,8 +6,20 @@
       "use": "@vercel/node"
     }
   ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    }
+  ],
   "github": {
-    "silent": false
+    "silent": true
+  },
+  "functions": {
+    "api/setWebhook.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
   },
   "buildCommand": "",
   "installCommand": "npm install",
@@ -24,7 +36,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/", "destination": "/api/index" },
     { "source": "/setwebhook", "destination": "/api/setWebhook" }
   ],
