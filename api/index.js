@@ -4,6 +4,8 @@ const { createClient } = require('@supabase/supabase-js');
 // Конфигурация из переменных окружения
 // Поддержка нескольких ботов - получаем все переменные с префиксом BOT_TOKEN_
 const BOT_TOKENS = {};
+
+// Сначала проверяем стандартный формат TELEGRAM_BOT_TOKEN_<ID>
 Object.keys(process.env).forEach(key => {
   if (key.startsWith('TELEGRAM_BOT_TOKEN_')) {
     const botId = key.replace('TELEGRAM_BOT_TOKEN_', '');
@@ -11,10 +13,40 @@ Object.keys(process.env).forEach(key => {
   }
 });
 
+// Проверяем переменные в других возможных форматах
+Object.keys(process.env).forEach(key => {
+  // Проверяем формат TELEGRAM_<ID>_BOT_TOKEN
+  if (key.startsWith('TELEGRAM_') && key.endsWith('_BOT_TOKEN') && !key.startsWith('TELEGRAM_BOT_TOKEN_')) {
+    const botId = key.replace('TELEGRAM_', '').replace('_BOT_TOKEN', '');
+    BOT_TOKENS[botId] = process.env[key];
+    console.log(`Найден альтернативный формат переменной для бота ${botId}: ${key}`);
+  }
+  // Проверяем другие возможные форматы, если они используются
+  else if (key.startsWith('BOT_TOKEN_')) {
+    const botId = key.replace('BOT_TOKEN_', '');
+    BOT_TOKENS[botId] = process.env[key];
+    console.log(`Найден альтернативный формат переменной для бота ${botId}: ${key}`);
+  }
+  else if (key === 'TELEGRAM_MYSHADOW' || key === 'TELEGRAM_TOKEN_MYSHADOW') {
+    BOT_TOKENS['MYSHADOW'] = process.env[key];
+    console.log(`Найден специальный формат переменной для бота MYSHADOW: ${key}`);
+  }
+  else if (key === 'TELEGRAM_FEELME36' || key === 'TELEGRAM_TOKEN_FEELME36') {
+    BOT_TOKENS['FEELME36'] = process.env[key];
+    console.log(`Найден специальный формат переменной для бота FEELME36: ${key}`);
+  }
+});
+
 // Поддерживаем обратную совместимость, но не используем специальный ID
 if (process.env.TELEGRAM_BOT_TOKEN && Object.keys(BOT_TOKENS).length === 0) {
   // Только если нет других ботов, используем MAIN как ID
   BOT_TOKENS['MAIN'] = process.env.TELEGRAM_BOT_TOKEN;
+}
+
+// Проверим, был ли добавлен хотя бы один бот MYSHADOW, если нет - проверим другие переменные
+if (!BOT_TOKENS['MYSHADOW'] && process.env.TELEGRAM_BOT_TOKEN) {
+  console.log('Бот MYSHADOW не найден в стандартных переменных, попробуем использовать TELEGRAM_BOT_TOKEN');
+  BOT_TOKENS['MYSHADOW'] = process.env.TELEGRAM_BOT_TOKEN;
 }
 
 const OWNER_ID = process.env.OWNER_TELEGRAM_ID;
@@ -37,34 +69,14 @@ console.log('SUPABASE_URL задан:', !!SUPABASE_URL);
 console.log('SUPABASE_KEY задан:', !!SUPABASE_KEY);
 console.log('Количество ботов:', Object.keys(BOT_TOKENS).length);
 console.log('IDs ботов:', Object.keys(BOT_TOKENS).join(', '));
-console.log('Переменные окружения для ботов:', Object.entries(BOT_TOKENS).map(([id, token]) => ({
-  id,
-  tokenLength: token ? token.length : 0,
-  tokenStart: token ? token.substring(0, 5) + '...' : 'не задан'
-})));
 
-// Проверка переменных окружения
-const requiredEnvVars = [
-  'SUPABASE_URL',
-  'SUPABASE_KEY',
-  'WEBHOOK_BASE_URL'
-];
-
-const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
-if (missingEnvVars.length > 0) {
-  console.error('Отсутствуют обязательные переменные окружения:', missingEnvVars.join(', '));
-  process.exit(1);
-}
-
-// Проверка наличия токенов ботов
-const botIds = Object.keys(BOT_TOKENS);
-if (botIds.length === 0) {
-  console.error('Не найдены токены ботов в переменных окружения');
-  process.exit(1);
-}
-
-console.log('Все обязательные переменные окружения присутствуют');
-console.log('Найдены боты:', botIds.join(', '));
+// Выводим полный список переменных окружения (без значений, только имена)
+console.log('Все переменные окружения:');
+Object.keys(process.env).forEach(key => {
+  if (key.startsWith('TELEGRAM_') || key === 'OWNER_TELEGRAM_ID') {
+    console.log(`- ${key}: ${key.startsWith('TELEGRAM_BOT_TOKEN') ? 'ЗАДАН' : process.env[key]}`);
+  }
+});
 
 // Инициализация Supabase клиента
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -99,13 +111,7 @@ checkTableExists();
 const bots = {};
 Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
   try {
-    console.log(`Инициализация бота ${botId}...`);
     const bot = new Telegraf(token);
-    
-    // Проверяем, что бот действительно создан
-    if (!bot) {
-      throw new Error('Бот не был создан');
-    }
     
     // Обработчик команды /start
     bot.start(async (ctx) => {
@@ -194,20 +200,12 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
     
     // Добавляем бота в список
     bots[botId] = bot;
-    console.log(`Бот ${botId} успешно инициализирован и добавлен в список ботов`);
+    console.log(`Бот ${botId} успешно инициализирован`);
     
   } catch (error) {
     console.error(`Ошибка при инициализации бота ${botId}:`, error);
-    console.error('Детали ошибки:', {
-      botId,
-      tokenLength: token ? token.length : 0,
-      tokenStart: token ? token.substring(0, 5) + '...' : 'не задан'
-    });
   }
 });
-
-// Проверяем список инициализированных ботов
-console.log('Инициализированные боты:', Object.keys(bots).join(', '));
 
 // Функция для сохранения сообщения в БД
 async function saveMessageToDatabase(userId, userName, userSurname, messageText, timestamp, botId) {
@@ -305,31 +303,6 @@ async function hasRecentMessages(userId, botId) {
   }
 }
 
-// Функция для настройки webhook'ов
-async function setupWebhooks() {
-  console.log('Настройка webhook\'ов для всех ботов...');
-  
-  for (const [botId, bot] of Object.entries(bots)) {
-    try {
-      console.log(`Настройка webhook для бота ${botId}...`);
-      
-      // Получаем текущие настройки webhook
-      const webhookInfo = await bot.telegram.getWebhookInfo();
-      console.log(`Текущие настройки webhook для бота ${botId}:`, webhookInfo);
-      
-      // Устанавливаем новый webhook
-      const webhookUrl = `${WEBHOOK_BASE_URL}/webhook/${botId}`;
-      console.log(`Установка webhook URL: ${webhookUrl}`);
-      
-      await bot.telegram.setWebhook(webhookUrl);
-      console.log(`Webhook успешно установлен для бота ${botId}`);
-      
-    } catch (error) {
-      console.error(`Ошибка при настройке webhook для бота ${botId}:`, error);
-    }
-  }
-}
-
 // Webhook для Vercel
 module.exports = async (req, res) => {
   try {
@@ -347,23 +320,31 @@ module.exports = async (req, res) => {
       if (path.includes('/api/index/')) {
         const pathParts = path.split('/');
         targetBotId = pathParts[pathParts.length - 1];
+      } else {
+        // Если это корневой путь "/api/index", проверим, есть ли MYSHADOW или FEELME36
+        if (bots['FEELME36']) {
+          targetBotId = 'FEELME36';
+          console.log('Корневой путь, приоритетно используем бота FEELME36');
+        } else if (bots['MYSHADOW']) {
+          targetBotId = 'MYSHADOW';
+          console.log('Корневой путь, приоритетно используем бота MYSHADOW');
+        } else if (availableBotIds.length > 0) {
+          // Иначе берем первого доступного бота
+          targetBotId = availableBotIds[0];
+          console.log(`Корневой путь, используем первый доступный бот: ${targetBotId}`);
+        }
       }
       
       console.log(`Получен запрос на ${path}`);
       console.log(`Определен targetBotId: ${targetBotId || '[не указан]'}`);
       console.log(`Доступные боты: ${availableBotIds.join(', ')}`);
+      console.log(`Тело запроса:`, JSON.stringify(req.body).substring(0, 200) + '...');
 
       // Проверяем, существует ли бот с таким ID
       if (targetBotId && bots[targetBotId]) {
         // Если указан конкретный ID бота и он существует
         console.log(`Обрабатываем запрос через бота ${targetBotId}`);
         await bots[targetBotId].handleUpdate(req.body);
-        res.status(200).end();
-      } else if (!targetBotId && availableBotIds.length > 0) {
-        // Если запрос на корневой путь (/api/index), используем первый доступный бот
-        const firstBotId = availableBotIds[0];
-        console.log(`Корневой путь, используем первый доступный бот: ${firstBotId}`);
-        await bots[firstBotId].handleUpdate(req.body);
         res.status(200).end();
       } else {
         // Если бот не найден
@@ -390,28 +371,6 @@ module.exports = async (req, res) => {
     }
   } catch (error) {
     console.error('Ошибка при обработке запроса:', error);
-    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+    res.status(500).json({ error: 'Внутренняя ошибка сервера', details: error.message });
   }
-};
-
-// Обработка webhook запросов
-app.post('/webhook/:botId', async (req, res) => {
-  const { botId } = req.params;
-  console.log(`Получен webhook запрос для бота ${botId}`);
-  console.log('Доступные боты:', Object.keys(bots).join(', '));
-  
-  const bot = bots[botId];
-  if (!bot) {
-    console.error(`Бот ${botId} не найден в списке инициализированных ботов`);
-    return res.status(404).json({ error: `Bot ${botId} not found` });
-  }
-
-  try {
-    console.log(`Обработка запроса для бота ${botId}`);
-    await bot.handleUpdate(req.body);
-    res.sendStatus(200);
-  } catch (error) {
-    console.error(`Ошибка при обработке запроса для бота ${botId}:`, error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-}); 
+}; 

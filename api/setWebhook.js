@@ -5,6 +5,8 @@ const { createClient } = require('@supabase/supabase-js');
 
 // Поддержка нескольких ботов - получаем все переменные с префиксом BOT_TOKEN_
 const BOT_TOKENS = {};
+
+// Сначала проверяем стандартный формат TELEGRAM_BOT_TOKEN_<ID>
 Object.keys(process.env).forEach(key => {
   if (key.startsWith('TELEGRAM_BOT_TOKEN_')) {
     const botId = key.replace('TELEGRAM_BOT_TOKEN_', '');
@@ -12,10 +14,40 @@ Object.keys(process.env).forEach(key => {
   }
 });
 
-// Поддерживаем обратную совместимость, но не используем специальный ID
+// Проверяем переменные в других возможных форматах
+Object.keys(process.env).forEach(key => {
+  // Проверяем формат TELEGRAM_<ID>_BOT_TOKEN
+  if (key.startsWith('TELEGRAM_') && key.endsWith('_BOT_TOKEN') && !key.startsWith('TELEGRAM_BOT_TOKEN_')) {
+    const botId = key.replace('TELEGRAM_', '').replace('_BOT_TOKEN', '');
+    BOT_TOKENS[botId] = process.env[key];
+    console.log(`Найден альтернативный формат переменной для бота ${botId}: ${key}`);
+  }
+  // Проверяем другие возможные форматы, если они используются
+  else if (key.startsWith('BOT_TOKEN_')) {
+    const botId = key.replace('BOT_TOKEN_', '');
+    BOT_TOKENS[botId] = process.env[key];
+    console.log(`Найден альтернативный формат переменной для бота ${botId}: ${key}`);
+  }
+  else if (key === 'TELEGRAM_MYSHADOW' || key === 'TELEGRAM_TOKEN_MYSHADOW') {
+    BOT_TOKENS['MYSHADOW'] = process.env[key];
+    console.log(`Найден специальный формат переменной для бота MYSHADOW: ${key}`);
+  }
+  else if (key === 'TELEGRAM_FEELME36' || key === 'TELEGRAM_TOKEN_FEELME36') {
+    BOT_TOKENS['FEELME36'] = process.env[key];
+    console.log(`Найден специальный формат переменной для бота FEELME36: ${key}`);
+  }
+});
+
+// Поддерживаем обратную совместимость
 if (process.env.TELEGRAM_BOT_TOKEN && Object.keys(BOT_TOKENS).length === 0) {
   // Только если нет других ботов, используем MAIN как ID
   BOT_TOKENS['MAIN'] = process.env.TELEGRAM_BOT_TOKEN;
+}
+
+// Проверим, был ли добавлен хотя бы один бот MYSHADOW, если нет - проверим другие переменные
+if (!BOT_TOKENS['MYSHADOW'] && process.env.TELEGRAM_BOT_TOKEN) {
+  console.log('Бот MYSHADOW не найден в стандартных переменных, попробуем использовать TELEGRAM_BOT_TOKEN');
+  BOT_TOKENS['MYSHADOW'] = process.env.TELEGRAM_BOT_TOKEN;
 }
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
