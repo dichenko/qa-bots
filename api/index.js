@@ -11,9 +11,10 @@ Object.keys(process.env).forEach(key => {
   }
 });
 
-// Добавляем поддержку основного токена для обратной совместимости
-if (process.env.TELEGRAM_BOT_TOKEN) {
-  BOT_TOKENS['DEFAULT'] = process.env.TELEGRAM_BOT_TOKEN;
+// Поддерживаем обратную совместимость, но не используем специальный ID
+if (process.env.TELEGRAM_BOT_TOKEN && Object.keys(BOT_TOKENS).length === 0) {
+  // Только если нет других ботов, используем MAIN как ID
+  BOT_TOKENS['MAIN'] = process.env.TELEGRAM_BOT_TOKEN;
 }
 
 const OWNER_ID = process.env.OWNER_TELEGRAM_ID;
@@ -269,31 +270,35 @@ module.exports = async (req, res) => {
       // Получаем путь запроса для определения бота
       const path = req.url || '';
       
-      let botId = 'DEFAULT'; // По умолчанию используем DEFAULT
-      
       // Извлекаем ID бота из пути, только если путь содержит более одного сегмента
       const pathSegments = path.split('/').filter(segment => segment);
-      if (pathSegments.length > 1) {
-        botId = pathSegments[pathSegments.length - 1];
-      }
+      const botId = pathSegments.length > 1 ? pathSegments[pathSegments.length - 1] : '';
       
-      console.log(`Получен запрос на ${path}, определен botId: ${botId}`);
+      // Получаем все доступные ID ботов
+      const availableBotIds = Object.keys(bots);
       
+      console.log(`Получен запрос на ${path}, определен botId: ${botId || '[корневой путь]'}`);
+      console.log(`Доступные боты: ${availableBotIds.join(', ')}`);
+
       // Проверяем, существует ли бот с таким ID
-      if (bots[botId]) {
+      if (botId && bots[botId]) {
+        // Если указан конкретный ID бота и он существует
         await bots[botId].handleUpdate(req.body);
         res.status(200).end();
+      } else if (!botId && availableBotIds.length > 0) {
+        // Если запрос на корневой путь, используем первый доступный бот
+        const firstBotId = availableBotIds[0];
+        console.log(`Корневой путь, используем первый доступный бот: ${firstBotId}`);
+        await bots[firstBotId].handleUpdate(req.body);
+        res.status(200).end();
       } else {
-        // Если бот не найден, но есть DEFAULT бот, используем его
-        if (botId !== 'DEFAULT' && bots['DEFAULT']) {
-          console.log(`Бот с ID "${botId}" не найден, используем DEFAULT`);
-          await bots['DEFAULT'].handleUpdate(req.body);
-      res.status(200).end();
-        } else {
-          // Если бот не найден и нет DEFAULT бота
-          console.error(`Бот с ID "${botId}" не найден (путь: ${path}), доступные боты: ${Object.keys(bots).join(', ')}`);
-          res.status(404).json({ error: 'Бот не найден', availableBots: Object.keys(bots) });
-        }
+        // Если бот не найден
+        console.error(`Бот с ID "${botId}" не найден (путь: ${path}), доступные боты: ${availableBotIds.join(', ')}`);
+        res.status(404).json({ 
+          error: 'Бот не найден', 
+          availableBots: availableBotIds,
+          requestPath: path 
+        });
       }
     } else {
       // Для GET запросов возвращаем информацию о доступных ботах

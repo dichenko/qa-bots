@@ -12,9 +12,10 @@ Object.keys(process.env).forEach(key => {
   }
 });
 
-// Добавляем поддержку основного токена для обратной совместимости
-if (process.env.TELEGRAM_BOT_TOKEN) {
-  BOT_TOKENS['DEFAULT'] = process.env.TELEGRAM_BOT_TOKEN;
+// Поддерживаем обратную совместимость, но не используем специальный ID
+if (process.env.TELEGRAM_BOT_TOKEN && Object.keys(BOT_TOKENS).length === 0) {
+  // Только если нет других ботов, используем MAIN как ID
+  BOT_TOKENS['MAIN'] = process.env.TELEGRAM_BOT_TOKEN;
 }
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -59,22 +60,39 @@ module.exports = async (req, res) => {
     // Результаты установки вебхуков для всех ботов
     const results = {};
     
+    // Получаем список всех ботов
+    const botIds = Object.keys(BOT_TOKENS);
+    
     // Устанавливаем вебхуки для каждого бота
-    for (const [botId, token] of Object.entries(BOT_TOKENS)) {
+    for (const [index, [botId, token]] of Object.entries(BOT_TOKENS).entries()) {
       try {
-        // Формируем URL для вебхука, включая ID бота в путь
+        // Формируем URL для вебхука
         let webhookUrl;
-        if (botId === 'DEFAULT') {
-          // Для DEFAULT бота используем корневой путь
-          webhookUrl = `${protocol}://${host}/api/index`;
-        } else {
-          // Для других ботов добавляем ID бота через дополнительный сегмент пути
-          webhookUrl = `${protocol}://${host}/api/index/${botId}`;
+        
+        // Первый бот в списке получает также корневой путь
+        if (index === 0) {
+          // Устанавливаем корневой путь для первого бота
+          const rootWebhookUrl = `${protocol}://${host}/api/index`;
+          console.log(`Устанавливаем вебхук для бота ${botId} на корневой путь: ${rootWebhookUrl}`);
+          
+          // Устанавливаем вебхук для корневого пути
+          const rootResponse = await fetch(
+            `https://api.telegram.org/bot${token}/setWebhook?url=${rootWebhookUrl}`
+          );
+          
+          const rootData = await rootResponse.json();
+          results[`${botId}_root`] = {
+            success: rootData.ok,
+            url: rootWebhookUrl,
+            response: rootData
+          };
         }
         
-        console.log(`Устанавливаем вебхук для бота ${botId} на ${webhookUrl}`);
+        // Всегда устанавливаем именованный путь для каждого бота
+        webhookUrl = `${protocol}://${host}/api/index/${botId}`;
+        console.log(`Устанавливаем вебхук для бота ${botId} на именованный путь: ${webhookUrl}`);
         
-        // Устанавливаем вебхук
+        // Устанавливаем вебхук для именованного пути
         const response = await fetch(
           `https://api.telegram.org/bot${token}/setWebhook?url=${webhookUrl}`
         );
