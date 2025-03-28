@@ -1,6 +1,16 @@
 const { Telegraf } = require('telegraf');
 const { createClient } = require('@supabase/supabase-js');
 
+// Функция для экранирования HTML-специальных символов
+function escapeHTML(text) {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 // Конфигурация из переменных окружения
 // Поддержка нескольких ботов - получаем все переменные с префиксом BOT_TOKEN_
 const BOT_TOKENS = {};
@@ -127,7 +137,8 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
       // Отправка уведомления владельцу
       await bot.telegram.sendMessage(
         OWNER_ID,
-        `👤 Пользователь с ID: ${userId}\nИмя: ${userName || 'Не указано'}\nФамилия: ${userSurname || 'Не указана'}\nДействие: Запустил бота\nБот: ${botId}`
+        `<b>Пользователь запустил бота</b>\n\n<a href="tg://user?id=${userId}">${userId}</a> | ${escapeHTML(userName || '')} ${escapeHTML(userSurname || '')}\nБот: ${botId}`,
+        { parse_mode: 'HTML' }
       );
 
       // Сохранение в БД
@@ -147,7 +158,29 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
         if (ctx.message.reply_to_message && ctx.from.id.toString() === OWNER_ID) {
           // Получение ID пользователя и ID бота из оригинального сообщения
           const originalMessageText = ctx.message.reply_to_message.text;
-          const userIdMatch = originalMessageText.match(/ID: (\d+)/);
+          
+          // Пробуем разные варианты извлечения ID пользователя
+          let userIdMatch = null;
+          
+          // 1. Пытаемся найти ID в новом формате (строка начинается с числа после первого или второго \n\n)
+          const parts = originalMessageText.split('\n\n');
+          if (parts.length >= 2) {
+            // Ищем число в начале второй части текста (информация о пользователе)
+            const userInfoPart = parts[1];
+            const simpleIdMatch = userInfoPart.match(/^(\d+)/);
+            if (simpleIdMatch && simpleIdMatch[1]) {
+              userIdMatch = simpleIdMatch;
+            }
+          }
+          
+          // 2. Если не нашли, пробуем старый формат
+          if (!userIdMatch) {
+            const oldFormatMatch = originalMessageText.match(/ID: (\d+)/);
+            if (oldFormatMatch && oldFormatMatch[1]) {
+              userIdMatch = oldFormatMatch;
+            }
+          }
+          
           const botIdMatch = originalMessageText.match(/Бот: ([A-Z0-9_]+)/);
           
           if (userIdMatch && userIdMatch[1] && botIdMatch && botIdMatch[1]) {
@@ -156,8 +189,8 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
             const targetBot = bots[targetBotId];
             
             if (targetBot) {
-              // Отправка ответа пользователю
-              await targetBot.telegram.sendMessage(recipientId, `Ответ: ${messageText}`);
+              // Отправка ответа пользователю без префикса "Ответ: "
+              await targetBot.telegram.sendMessage(recipientId, messageText);
               
               // Сохранение ответа в БД
               await saveMessageToDatabase(OWNER_ID, 'Владелец', '', `Ответ для ${recipientId}: ${messageText}`, timestamp, targetBotId);
@@ -184,7 +217,8 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
           // Отправка сообщения владельцу в любом случае
           await bot.telegram.sendMessage(
             OWNER_ID,
-            `👤 Пользователь с ID: ${userId}\nИмя: ${userName || 'Не указано'}\nФамилия: ${userSurname || 'Не указана'}\nСообщение: ${messageText}\nБот: ${botId}`
+            `<b>${escapeHTML(messageText)}</b>\n\n<a href="tg://user?id=${userId}">${userId}</a> | ${escapeHTML(userName || '')} ${escapeHTML(userSurname || '')}\nБот: ${botId}`,
+            { parse_mode: 'HTML' }
           );
           
           // Сохранение в БД в любом случае
@@ -246,7 +280,8 @@ async function saveMessageToDatabase(userId, userName, userSurname, messageText,
         const firstBot = Object.values(bots)[0];
         await firstBot.telegram.sendMessage(
           OWNER_ID,
-          `⚠️ Ошибка при сохранении в БД:\nКод: ${error.code}\nСообщение: ${error.message}\nДетали: ${error.details || 'нет'}`
+          `<b>Ошибка при сохранении в БД</b>\n\nКод: ${escapeHTML(error.code)}\nСообщение: ${escapeHTML(error.message)}\nДетали: ${escapeHTML(error.details || 'нет')}`,
+          { parse_mode: 'HTML' }
         );
       } catch (e) {
         console.error('Не удалось отправить сообщение об ошибке владельцу:', e);
