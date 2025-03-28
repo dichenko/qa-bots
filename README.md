@@ -104,7 +104,7 @@ ID бота - это идентификатор, который использу
 <VERCEL_URL>/api/index/<ID_БОТА>
 ```
 
-Например, если у вас есть два бота с ID `FEELME36` и `MYSHADOW`, вебхуки будут настроены так:
+Например, если у вас есть  два бота с ID `FEELME36` и `MYSHADOW`, вебхуки будут настроены так:
 ```
 <VERCEL_URL>/api/index/FEELME36
 <VERCEL_URL>/api/index/MYSHADOW
