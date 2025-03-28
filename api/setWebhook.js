@@ -81,14 +81,11 @@ module.exports = async (req, res) => {
         
         if (error) {
           supabaseStatus = { connected: false, error: error.message, code: error.code };
-          console.error('Ошибка подключения к Supabase:', error);
         } else {
           supabaseStatus = { connected: true, message: 'Успешное подключение к Supabase' };
-          console.log('Успешное подключение к Supabase');
         }
       } catch (error) {
         supabaseStatus = { connected: false, error: error.message };
-        console.error('Ошибка подключения к Supabase:', error);
       }
     }
 
@@ -97,7 +94,6 @@ module.exports = async (req, res) => {
     
     // Получаем список всех ботов
     const botIds = Object.keys(BOT_TOKENS);
-    console.log(`Найдено ${botIds.length} ботов: ${botIds.join(', ')}`);
     
     // Устанавливаем вебхуки для каждого бота
     for (const [botId, token] of Object.entries(BOT_TOKENS)) {
@@ -112,31 +108,12 @@ module.exports = async (req, res) => {
         );
         
         const data = await response.json();
-        
-        if (!data.ok) {
-          console.error(`Ошибка установки вебхука для бота ${botId}:`, data.description);
-        } else {
-          console.log(`Вебхук для бота ${botId} успешно установлен на ${webhookUrl}`);
-        }
-        
         results[botId] = {
           success: data.ok,
           url: webhookUrl,
           response: data
         };
-        
-        // Получаем информацию о текущем вебхуке для проверки
-        const infoResponse = await fetch(
-          `https://api.telegram.org/bot${token}/getWebhookInfo`
-        );
-        
-        const infoData = await infoResponse.json();
-        
-        if (infoData.ok) {
-          results[botId].webhook_info = infoData.result;
-        }
       } catch (error) {
-        console.error(`Ошибка установки вебхука для бота ${botId}:`, error);
         results[botId] = {
           success: false,
           error: error.message
@@ -156,8 +133,7 @@ module.exports = async (req, res) => {
         supabase: supabaseStatus,
         webhookUrls: Object.entries(results).map(([botId, result]) => ({
           botId,
-          url: result.url,
-          current_webhook: result.webhook_info?.url || 'неизвестно'
+          url: result.url
         }))
       });
     } else {
@@ -169,10 +145,7 @@ module.exports = async (req, res) => {
         supabase: supabaseStatus,
         webhookUrls: Object.entries(results).map(([botId, result]) => ({
           botId,
-          url: result.url,
-          success: result.success,
-          error: result.error || result.response?.description,
-          current_webhook: result.webhook_info?.url || 'неизвестно'
+          url: result.url
         }))
       });
     }
