@@ -137,7 +137,7 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
       // Отправка уведомления владельцу
       await bot.telegram.sendMessage(
         OWNER_ID,
-        `<b>Пользователь запустил бота</b>\n\n<a href="tg://user?id=${userId}">${userId}</a> | ${escapeHTML(userName || '')} ${escapeHTML(userSurname || '')}\nБот: ${botId}`,
+        `<b>Пользователь запустил бота</b>\n\n${userId} | ${escapeHTML(userName || '')} ${escapeHTML(userSurname || '')}\nБот: ${botId}\n\n<a href="tg://user?id=${userId}">Открыть профиль</a>`,
         { parse_mode: 'HTML' }
       );
 
@@ -162,7 +162,7 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
           // Пробуем разные варианты извлечения ID пользователя
           let userIdMatch = null;
           
-          // 1. Пытаемся найти ID в новом формате (строка начинается с числа после первого или второго \n\n)
+          // 1. Сначала ищем числовой ID в строке после сообщения
           const parts = originalMessageText.split('\n\n');
           if (parts.length >= 2) {
             // Ищем число в начале второй части текста (информация о пользователе)
@@ -173,8 +173,16 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
             }
           }
           
-          // 2. Если не нашли, пробуем старый формат
-          if (!userIdMatch) {
+          // 2. Пробуем найти ссылку "Открыть профиль"
+          if (!userIdMatch || !userIdMatch[1]) {
+            const profileLinkMatch = originalMessageText.match(/tg:\/\/user\?id=(\d+)/);
+            if (profileLinkMatch && profileLinkMatch[1]) {
+              userIdMatch = profileLinkMatch;
+            }
+          }
+          
+          // 3. Старый формат (если есть "ID: число")
+          if (!userIdMatch || !userIdMatch[1]) {
             const oldFormatMatch = originalMessageText.match(/ID: (\d+)/);
             if (oldFormatMatch && oldFormatMatch[1]) {
               userIdMatch = oldFormatMatch;
@@ -217,7 +225,7 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
           // Отправка сообщения владельцу в любом случае
           await bot.telegram.sendMessage(
             OWNER_ID,
-            `<b>${escapeHTML(messageText)}</b>\n\n<a href="tg://user?id=${userId}">${userId}</a> | ${escapeHTML(userName || '')} ${escapeHTML(userSurname || '')}\nБот: ${botId}`,
+            `<b>${escapeHTML(messageText)}</b>\n\n${userId} | ${escapeHTML(userName || '')} ${escapeHTML(userSurname || '')}\nБот: ${botId}\n\n<a href="tg://user?id=${userId}">Открыть профиль</a>`,
             { parse_mode: 'HTML' }
           );
           
