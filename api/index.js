@@ -11,10 +11,10 @@ Object.keys(process.env).forEach(key => {
   }
 });
 
-// Убираем поддержку дефолтного бота по просьбе пользователя
-// if (process.env.TELEGRAM_BOT_TOKEN) {
-//   BOT_TOKENS['DEFAULT'] = process.env.TELEGRAM_BOT_TOKEN;
-// }
+// Добавляем поддержку основного токена для обратной совместимости
+if (process.env.TELEGRAM_BOT_TOKEN) {
+  BOT_TOKENS['DEFAULT'] = process.env.TELEGRAM_BOT_TOKEN;
+}
 
 const OWNER_ID = process.env.OWNER_TELEGRAM_ID;
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -269,7 +269,7 @@ module.exports = async (req, res) => {
       // Получаем путь запроса для определения бота
       const path = req.url || '';
       
-      let botId = null; // Не используем DEFAULT по умолчанию
+      let botId = 'DEFAULT'; // По умолчанию используем DEFAULT
       
       // Извлекаем ID бота из пути, только если путь содержит более одного сегмента
       const pathSegments = path.split('/').filter(segment => segment);
@@ -280,13 +280,20 @@ module.exports = async (req, res) => {
       console.log(`Получен запрос на ${path}, определен botId: ${botId}`);
       
       // Проверяем, существует ли бот с таким ID
-      if (botId && bots[botId]) {
+      if (bots[botId]) {
         await bots[botId].handleUpdate(req.body);
         res.status(200).end();
       } else {
-        // Если бот не найден, возвращаем ошибку 404
-        console.error(`Бот с ID "${botId}" не найден (путь: ${path}), доступные боты: ${Object.keys(bots).join(', ')}`);
-        res.status(404).json({ error: 'Бот не найден', availableBots: Object.keys(bots) });
+        // Если бот не найден, но есть DEFAULT бот, используем его
+        if (botId !== 'DEFAULT' && bots['DEFAULT']) {
+          console.log(`Бот с ID "${botId}" не найден, используем DEFAULT`);
+          await bots['DEFAULT'].handleUpdate(req.body);
+      res.status(200).end();
+        } else {
+          // Если бот не найден и нет DEFAULT бота
+          console.error(`Бот с ID "${botId}" не найден (путь: ${path}), доступные боты: ${Object.keys(bots).join(', ')}`);
+          res.status(404).json({ error: 'Бот не найден', availableBots: Object.keys(bots) });
+        }
       }
     } else {
       // Для GET запросов возвращаем информацию о доступных ботах
@@ -301,4 +308,4 @@ module.exports = async (req, res) => {
     console.error('Ошибка при обработке запроса:', error);
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
-};
+}; 
