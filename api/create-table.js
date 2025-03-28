@@ -53,11 +53,13 @@ module.exports = async (req, res) => {
           user_name TEXT,
           user_surname TEXT,
           text TEXT NOT NULL,
-          timecode TIMESTAMP NOT NULL DEFAULT NOW()
+          timecode TIMESTAMP NOT NULL DEFAULT NOW(),
+          bot_id TEXT NOT NULL
         );
         
         CREATE INDEX IF NOT EXISTS idx_qa_bot_messages_tgid ON public.qa_bot_messages(tgid);
         CREATE INDEX IF NOT EXISTS idx_qa_bot_messages_timecode ON public.qa_bot_messages(timecode);
+        CREATE INDEX IF NOT EXISTS idx_qa_bot_messages_bot_id ON public.qa_bot_messages(bot_id);
       END;
       $$ LANGUAGE plpgsql SECURITY DEFINER;
       `;
