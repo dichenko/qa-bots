@@ -134,11 +134,18 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
       // Ответ пользователю
       await ctx.reply('Здравствуйте! Напишите ваше сообщение, и мы скоро на него ответим.');
       
-      // Отправка уведомления владельцу
+      // Отправка уведомления владельцу при старте
       await bot.telegram.sendMessage(
         OWNER_ID,
-        `<b>Пользователь запустил бота</b>\n\n${userId} | ${escapeHTML(userName || '')} ${escapeHTML(userSurname || '')}\nБот: ${botId}\n\n<a href="tg://user?id=${userId}">Открыть профиль</a>`,
-        { parse_mode: 'HTML' }
+        `<b>Пользователь запустил бота</b>\n\n${userId} | ${escapeHTML(userName || '')} ${escapeHTML(userSurname || '')}\nБот: ${botId}`,
+        { 
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: '👤 Открыть профиль', url: `tg://user?id=${userId}` }]
+            ]
+          }
+        }
       );
 
       // Сохранение в БД
@@ -173,15 +180,7 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
             }
           }
           
-          // 2. Пробуем найти ссылку "Открыть профиль"
-          if (!userIdMatch || !userIdMatch[1]) {
-            const profileLinkMatch = originalMessageText.match(/tg:\/\/user\?id=(\d+)/);
-            if (profileLinkMatch && profileLinkMatch[1]) {
-              userIdMatch = profileLinkMatch;
-            }
-          }
-          
-          // 3. Старый формат (если есть "ID: число")
+          // 2. Старый формат (если есть "ID: число")
           if (!userIdMatch || !userIdMatch[1]) {
             const oldFormatMatch = originalMessageText.match(/ID: (\d+)/);
             if (oldFormatMatch && oldFormatMatch[1]) {
@@ -225,8 +224,15 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
           // Отправка сообщения владельцу в любом случае
           await bot.telegram.sendMessage(
             OWNER_ID,
-            `<b>${escapeHTML(messageText)}</b>\n\n${userId} | ${escapeHTML(userName || '')} ${escapeHTML(userSurname || '')}\nБот: ${botId}\n\n<a href="tg://user?id=${userId}">Открыть профиль</a>`,
-            { parse_mode: 'HTML' }
+            `<b>${escapeHTML(messageText)}</b>\n\n${userId} | ${escapeHTML(userName || '')} ${escapeHTML(userSurname || '')}\nБот: ${botId}`,
+            { 
+              parse_mode: 'HTML',
+              reply_markup: {
+                inline_keyboard: [
+                  [{ text: '👤 Открыть профиль', url: `tg://user?id=${userId}` }]
+                ]
+              }
+            }
           );
           
           // Сохранение в БД в любом случае
