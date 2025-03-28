@@ -270,34 +270,42 @@ module.exports = async (req, res) => {
       // Получаем путь запроса для определения бота
       const path = req.url || '';
       
-      // Извлекаем ID бота из пути, только если путь содержит более одного сегмента
-      const pathSegments = path.split('/').filter(segment => segment);
-      const botId = pathSegments.length > 1 ? pathSegments[pathSegments.length - 1] : '';
-      
       // Получаем все доступные ID ботов
       const availableBotIds = Object.keys(bots);
       
-      console.log(`Получен запрос на ${path}, определен botId: ${botId || '[корневой путь]'}`);
+      // Определяем, какой бот должен обработать запрос
+      let targetBotId = null;
+      
+      // Если путь содержит ID бота (например, /api/index/FEELME36)
+      if (path.includes('/api/index/')) {
+        const pathParts = path.split('/');
+        targetBotId = pathParts[pathParts.length - 1];
+      }
+      
+      console.log(`Получен запрос на ${path}`);
+      console.log(`Определен targetBotId: ${targetBotId || '[не указан]'}`);
       console.log(`Доступные боты: ${availableBotIds.join(', ')}`);
 
       // Проверяем, существует ли бот с таким ID
-      if (botId && bots[botId]) {
+      if (targetBotId && bots[targetBotId]) {
         // Если указан конкретный ID бота и он существует
-        await bots[botId].handleUpdate(req.body);
+        console.log(`Обрабатываем запрос через бота ${targetBotId}`);
+        await bots[targetBotId].handleUpdate(req.body);
         res.status(200).end();
-      } else if (!botId && availableBotIds.length > 0) {
-        // Если запрос на корневой путь, используем первый доступный бот
+      } else if (!targetBotId && availableBotIds.length > 0) {
+        // Если запрос на корневой путь (/api/index), используем первый доступный бот
         const firstBotId = availableBotIds[0];
         console.log(`Корневой путь, используем первый доступный бот: ${firstBotId}`);
         await bots[firstBotId].handleUpdate(req.body);
         res.status(200).end();
       } else {
         // Если бот не найден
-        console.error(`Бот с ID "${botId}" не найден (путь: ${path}), доступные боты: ${availableBotIds.join(', ')}`);
+        console.error(`Бот с ID "${targetBotId}" не найден (путь: ${path}), доступные боты: ${availableBotIds.join(', ')}`);
         res.status(404).json({ 
           error: 'Бот не найден', 
           availableBots: availableBotIds,
-          requestPath: path 
+          requestPath: path,
+          targetBotId: targetBotId
         });
       }
     } else {
@@ -306,7 +314,11 @@ module.exports = async (req, res) => {
       res.status(200).json({ 
         status: 'Система активна',
         bots: activeBots,
-        count: activeBots.length
+        count: activeBots.length,
+        webhookUrls: activeBots.map(botId => ({
+          botId,
+          url: `/api/index/${botId}`
+        }))
       });
     }
   } catch (error) {

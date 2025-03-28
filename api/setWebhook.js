@@ -64,35 +64,13 @@ module.exports = async (req, res) => {
     const botIds = Object.keys(BOT_TOKENS);
     
     // Устанавливаем вебхуки для каждого бота
-    for (const [index, [botId, token]] of Object.entries(BOT_TOKENS).entries()) {
+    for (const [botId, token] of Object.entries(BOT_TOKENS)) {
       try {
         // Формируем URL для вебхука
-        let webhookUrl;
+        const webhookUrl = `${protocol}://${host}/api/index/${botId}`;
+        console.log(`Устанавливаем вебхук для бота ${botId} на: ${webhookUrl}`);
         
-        // Первый бот в списке получает также корневой путь
-        if (index === 0) {
-          // Устанавливаем корневой путь для первого бота
-          const rootWebhookUrl = `${protocol}://${host}/api/index`;
-          console.log(`Устанавливаем вебхук для бота ${botId} на корневой путь: ${rootWebhookUrl}`);
-          
-          // Устанавливаем вебхук для корневого пути
-          const rootResponse = await fetch(
-            `https://api.telegram.org/bot${token}/setWebhook?url=${rootWebhookUrl}`
-          );
-          
-          const rootData = await rootResponse.json();
-          results[`${botId}_root`] = {
-            success: rootData.ok,
-            url: rootWebhookUrl,
-            response: rootData
-          };
-        }
-        
-        // Всегда устанавливаем именованный путь для каждого бота
-        webhookUrl = `${protocol}://${host}/api/index/${botId}`;
-        console.log(`Устанавливаем вебхук для бота ${botId} на именованный путь: ${webhookUrl}`);
-        
-        // Устанавливаем вебхук для именованного пути
+        // Устанавливаем вебхук
         const response = await fetch(
           `https://api.telegram.org/bot${token}/setWebhook?url=${webhookUrl}`
         );
@@ -120,7 +98,11 @@ module.exports = async (req, res) => {
         message: `Все вебхуки успешно установлены`,
         results: results,
         env: envInfo,
-        supabase: supabaseStatus
+        supabase: supabaseStatus,
+        webhookUrls: Object.entries(results).map(([botId, result]) => ({
+          botId,
+          url: result.url
+        }))
       });
     } else {
       return res.status(207).json({ 
@@ -128,7 +110,11 @@ module.exports = async (req, res) => {
         message: 'Не все вебхуки были успешно установлены',
         results: results,
         env: envInfo,
-        supabase: supabaseStatus
+        supabase: supabaseStatus,
+        webhookUrls: Object.entries(results).map(([botId, result]) => ({
+          botId,
+          url: result.url
+        }))
       });
     }
   } catch (error) {
