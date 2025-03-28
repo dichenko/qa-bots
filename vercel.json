@@ -6,12 +6,6 @@
       "use": "@vercel/node"
     }
   ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    }
-  ],
   "github": {
     "silent": false
   },
@@ -30,6 +24,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/", "destination": "/api/index" },
     { "source": "/setwebhook", "destination": "/api/setWebhook" }
   ],
