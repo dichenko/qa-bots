@@ -268,21 +268,32 @@ module.exports = async (req, res) => {
     if (req.method === 'POST') {
       // Получаем путь запроса для определения бота
       const path = req.url || '';
-      const botId = path.split('/').pop(); // Извлекаем ID бота из пути
+      
+      let botId = 'DEFAULT'; // По умолчанию используем DEFAULT
+      
+      // Извлекаем ID бота из пути, только если путь содержит более одного сегмента
+      const pathSegments = path.split('/').filter(segment => segment);
+      if (pathSegments.length > 1) {
+        botId = pathSegments[pathSegments.length - 1];
+      }
+      
+      console.log(`Получен запрос на ${path}, определен botId: ${botId}`);
       
       // Проверяем, существует ли бот с таким ID
-      if (botId && bots[botId]) {
+      if (bots[botId]) {
         await bots[botId].handleUpdate(req.body);
         res.status(200).end();
-      } else if (path === '/' && Object.keys(bots).length === 1) {
-        // Если путь корневой и только один бот, используем его
-        const defaultBotId = Object.keys(bots)[0];
-        await bots[defaultBotId].handleUpdate(req.body);
-        res.status(200).end();
       } else {
-        // Если бот не найден
-        console.error(`Бот с ID "${botId}" не найден (путь: ${path})`);
-        res.status(404).json({ error: 'Бот не найден' });
+        // Если бот не найден, но есть DEFAULT бот, используем его
+        if (botId !== 'DEFAULT' && bots['DEFAULT']) {
+          console.log(`Бот с ID "${botId}" не найден, используем DEFAULT`);
+          await bots['DEFAULT'].handleUpdate(req.body);
+          res.status(200).end();
+        } else {
+          // Если бот не найден и нет DEFAULT бота
+          console.error(`Бот с ID "${botId}" не найден (путь: ${path}), доступные боты: ${Object.keys(bots).join(', ')}`);
+          res.status(404).json({ error: 'Бот не найден', availableBots: Object.keys(bots) });
+        }
       }
     } else {
       // Для GET запросов возвращаем информацию о доступных ботах

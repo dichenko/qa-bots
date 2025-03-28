@@ -65,11 +65,14 @@ module.exports = async (req, res) => {
         // Формируем URL для вебхука, включая ID бота в путь
         let webhookUrl;
         if (botId === 'DEFAULT') {
-          // Для совместимости со старыми установками
+          // Для DEFAULT бота используем корневой путь
           webhookUrl = `${protocol}://${host}/api/index`;
         } else {
+          // Для других ботов добавляем ID бота через дополнительный сегмент пути
           webhookUrl = `${protocol}://${host}/api/index/${botId}`;
         }
+        
+        console.log(`Устанавливаем вебхук для бота ${botId} на ${webhookUrl}`);
         
         // Устанавливаем вебхук
         const response = await fetch(
