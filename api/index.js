@@ -127,8 +127,7 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
       // Отправка уведомления владельцу
       await bot.telegram.sendMessage(
         OWNER_ID,
-        `*Пользователь запустил бота*\n\n[${userId}](tg://user?id=${userId}) | ${userName || ''} ${userSurname || ''}\nБот: ${botId}`,
-        { parse_mode: 'Markdown' }
+        `👤 Пользователь с ID: ${userId}\nИмя: ${userName || 'Не указано'}\nФамилия: ${userSurname || 'Не указана'}\nДействие: Запустил бота\nБот: ${botId}`
       );
 
       // Сохранение в БД
@@ -148,8 +147,7 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
         if (ctx.message.reply_to_message && ctx.from.id.toString() === OWNER_ID) {
           // Получение ID пользователя и ID бота из оригинального сообщения
           const originalMessageText = ctx.message.reply_to_message.text;
-          // Новый формат содержит userId как [123456789](tg://user?id=123456789)
-          const userIdMatch = originalMessageText.match(/\[(\d+)\]/);
+          const userIdMatch = originalMessageText.match(/ID: (\d+)/);
           const botIdMatch = originalMessageText.match(/Бот: ([A-Z0-9_]+)/);
           
           if (userIdMatch && userIdMatch[1] && botIdMatch && botIdMatch[1]) {
@@ -158,8 +156,8 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
             const targetBot = bots[targetBotId];
             
             if (targetBot) {
-              // Отправка ответа пользователю без префикса "Ответ: "
-              await targetBot.telegram.sendMessage(recipientId, messageText);
+              // Отправка ответа пользователю
+              await targetBot.telegram.sendMessage(recipientId, `Ответ: ${messageText}`);
               
               // Сохранение ответа в БД
               await saveMessageToDatabase(OWNER_ID, 'Владелец', '', `Ответ для ${recipientId}: ${messageText}`, timestamp, targetBotId);
@@ -186,8 +184,7 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
           // Отправка сообщения владельцу в любом случае
           await bot.telegram.sendMessage(
             OWNER_ID,
-            `*${messageText}*\n\n[${userId}](tg://user?id=${userId}) | ${userName || ''} ${userSurname || ''}\nБот: ${botId}`,
-            { parse_mode: 'Markdown' }
+            `👤 Пользователь с ID: ${userId}\nИмя: ${userName || 'Не указано'}\nФамилия: ${userSurname || 'Не указана'}\nСообщение: ${messageText}\nБот: ${botId}`
           );
           
           // Сохранение в БД в любом случае
@@ -249,8 +246,7 @@ async function saveMessageToDatabase(userId, userName, userSurname, messageText,
         const firstBot = Object.values(bots)[0];
         await firstBot.telegram.sendMessage(
           OWNER_ID,
-          `*Ошибка при сохранении в БД*\n\nКод: ${error.code}\nСообщение: ${error.message}\nДетали: ${error.details || 'нет'}`,
-          { parse_mode: 'Markdown' }
+          `⚠️ Ошибка при сохранении в БД:\nКод: ${error.code}\nСообщение: ${error.message}\nДетали: ${error.details || 'нет'}`
         );
       } catch (e) {
         console.error('Не удалось отправить сообщение об ошибке владельцу:', e);
@@ -265,8 +261,8 @@ async function saveMessageToDatabase(userId, userName, userSurname, messageText,
       const firstBot = Object.values(bots)[0];
       await firstBot.telegram.sendMessage(
         OWNER_ID,
-        `*Критическая ошибка при работе с БД*\n\n${err.message}`,
-        { parse_mode: 'Markdown' }
+        `<b>Критическая ошибка при работе с БД</b>\n\n${escapeHTML(err.message)}`,
+        { parse_mode: 'HTML' }
       );
     } catch (e) {
       console.error('Не удалось отправить сообщение о критической ошибке владельцу:', e);
