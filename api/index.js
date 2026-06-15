@@ -60,8 +60,8 @@ if (!BOT_TOKENS['MYSHADOW'] && process.env.TELEGRAM_BOT_TOKEN) {
 }
 
 const OWNER_ID = process.env.OWNER_TELEGRAM_ID;
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 // Проверка обязательных переменных окружения
 if (Object.keys(BOT_TOKENS).length === 0 || !OWNER_ID) {
@@ -88,8 +88,14 @@ Object.keys(process.env).forEach(key => {
   }
 });
 
-// Инициализация Supabase клиента
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+// Инициализация Supabase клиента (без auth — не требуется для serverless)
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false
+  }
+});
 
 // Проверка существования таблицы
 async function checkTableExists() {
@@ -255,6 +261,24 @@ Object.entries(BOT_TOKENS).forEach(([botId, token]) => {
   }
 });
 
+// Функция для повторной попытки при сетевых ошибках
+async function withRetry(fn, retries = 3, delay = 1000) {
+  let lastError;
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (i < retries - 1) {
+        console.log(`Повторная попытка через ${delay}мс (попытка ${i + 1}/${retries})...`);
+        await new Promise(r => setTimeout(r, delay));
+        delay *= 2;
+      }
+    }
+  }
+  throw lastError;
+}
+
 // Функция для сохранения сообщения в БД
 async function saveMessageToDatabase(userId, userName, userSurname, messageText, timestamp, botId) {
   try {
@@ -274,7 +298,7 @@ async function saveMessageToDatabase(userId, userName, userSurname, messageText,
     // Преобразуем userId в строку, если он не строка
     const tgidValue = userId.toString();
     
-    const { data, error } = await supabase
+    const { data, error } = await withRetry(() => supabase
       .from('qa_bot_messages')
       .insert([
         { 
@@ -285,7 +309,7 @@ async function saveMessageToDatabase(userId, userName, userSurname, messageText,
           timecode: timestamp,
           bot_id: botId
         }
-      ]);
+      ]));
     
     if (error) {
       console.error('Ошибка при сохранении в БД:', error);
@@ -329,14 +353,14 @@ async function hasRecentMessages(userId, botId) {
     
     console.log(`Проверяем сообщения пользователя ${userId} в боте ${botId} за последние 24 часа (после ${oneDayAgoStr})...`);
     
-    const { data, error } = await supabase
+    const { data, error } = await withRetry(() => supabase
       .from('qa_bot_messages')
       .select('id, timecode')
       .eq('tgid', userId.toString())
       .eq('bot_id', botId)
       .gte('timecode', oneDayAgoStr)
       .order('timecode', { ascending: false })
-      .limit(1);
+      .limit(1));
     
     if (error) {
       console.error('Ошибка при проверке недавних сообщений:', error);
