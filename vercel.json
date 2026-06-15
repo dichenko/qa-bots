@@ -4,6 +4,10 @@
     { "src": "api/*.js", "use": "@vercel/node" }
   ],
   "routes": [
+    { "src": "/api/keep-alive", "dest": "/api/keep-alive.js" },
     { "src": "/(.*)", "dest": "/api/index.js" }
+  ],
+  "crons": [
+    { "path": "/api/keep-alive", "schedule": "0 6 * * *" }
   ]
 } 
